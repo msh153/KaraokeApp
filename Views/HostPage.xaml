@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="KaraokeApp.Views.HostPage"
+             Title="Хост — Керування"
+             BackgroundColor="#0D0D1A">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20,16" Spacing="14">
+
+            <!-- Status -->
+            <Frame BackgroundColor="#1A1A2E" CornerRadius="14" Padding="16,12" HasShadow="False">
+                <VerticalStackLayout Spacing="6">
+                    <Label x:Name="LblStatus" Text="Готовий" FontSize="14"
+                           TextColor="#A07AFF" HorizontalOptions="Center" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Label x:Name="LblSpeaker" Grid.Column="0"
+                               Text="🔴 JBL не підключений"
+                               FontSize="13" TextColor="#CCCCDD" HorizontalOptions="Center" />
+                        <Label x:Name="LblClient" Grid.Column="1"
+                               Text="🔴 Клієнт відсутній"
+                               FontSize="13" TextColor="#CCCCDD" HorizontalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Bluetooth -->
+            <Frame BackgroundColor="#1A1A2E" CornerRadius="14" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="🔊 Bluetooth Динамік" FontSize="16" FontAttributes="Bold" TextColor="White"/>
+                    <Button x:Name="BtnScan" Text="🔍 Сканувати Bluetooth"
+                            BackgroundColor="#2D2D50" TextColor="#A07AFF"
+                            CornerRadius="10" FontSize="14"
+                            Clicked="OnScanClicked" />
+                    <CollectionView x:Name="DeviceList" HeightRequest="160">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Frame BackgroundColor="#252540" CornerRadius="10"
+                                       Padding="12,8" Margin="0,3" HasShadow="False">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Label Grid.Column="0" Text="🔵" FontSize="18" VerticalOptions="Center"/>
+                                        <VerticalStackLayout Grid.Column="1" Margin="10,0" VerticalOptions="Center">
+                                            <Label Text="{Binding Name}" FontSize="14" TextColor="White" FontAttributes="Bold"/>
+                                            <Label Text="{Binding SignalStrength, StringFormat='RSSI: {0} dBm'}"
+                                                   FontSize="11" TextColor="#666688"/>
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="2" Text="Підключити"
+                                                BackgroundColor="#6C3CE1" TextColor="White"
+                                                CornerRadius="8" FontSize="12" Padding="10,6"
+                                                CommandParameter="{Binding .}"
+                                                Clicked="OnConnectDeviceClicked"/>
+                                    </Grid>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        <CollectionView.EmptyView>
+                            <Label Text="Скануйте для пошуку JBL Go 3"
+                                   TextColor="#444466" HorizontalOptions="Center"
+                                   VerticalOptions="Center" FontSize="13"/>
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Session -->
+            <Frame BackgroundColor="#1A1A2E" CornerRadius="14" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="📡 Сесія (Wi-Fi)" FontSize="16" FontAttributes="Bold" TextColor="White"/>
+                    <Frame x:Name="FrameSessionCode" BackgroundColor="#252540"
+                           CornerRadius="10" Padding="12,8" HasShadow="False" IsVisible="False">
+                        <VerticalStackLayout>
+                            <Label Text="Код сесії:" FontSize="11" TextColor="#666688"/>
+                            <Label x:Name="LblSessionCode" FontSize="24" FontAttributes="Bold"
+                                   TextColor="#A07AFF" CharacterSpacing="4"/>
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Button x:Name="BtnSession" Text="▶ Запустити сесію"
+                            BackgroundColor="#6C3CE1" TextColor="White"
+                            CornerRadius="10" FontSize="14"
+                            Clicked="OnSessionClicked"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Music -->
+            <Frame BackgroundColor="#1A1A2E" CornerRadius="14" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="🎵 Музика" FontSize="16" FontAttributes="Bold" TextColor="White"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label x:Name="LblMusicName" Grid.Column="0"
+                               Text="Музика не обрана" TextColor="White" FontSize="14"
+                               VerticalOptions="Center" LineBreakMode="TailTruncation"/>
+                        <Button Grid.Column="1" Text="📂 Обрати"
+                                BackgroundColor="#2D2D50" TextColor="#A07AFF"
+                                CornerRadius="8" FontSize="13" Padding="10,6"
+                                Clicked="OnPickMusicClicked"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                        <Button x:Name="BtnPlayPause" Grid.Column="0"
+                                Text="▶" BackgroundColor="#6C3CE1" TextColor="White"
+                                CornerRadius="24" WidthRequest="56" HeightRequest="56"
+                                FontSize="22" Clicked="OnPlayPauseClicked"/>
+                        <Slider x:Name="SliderMusic" Grid.Column="1"
+                                Minimum="0" Maximum="1" Value="0.8"
+                                ThumbColor="#A07AFF" MinimumTrackColor="#6C3CE1"
+                                MaximumTrackColor="#2D2D50"
+                                VerticalOptions="Center"
+                                ValueChanged="OnMusicVolumeChanged"/>
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Mics -->
+            <Frame BackgroundColor="#1A1A2E" CornerRadius="14" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="🎤 Мікрофони" FontSize="16" FontAttributes="Bold" TextColor="White"/>
+
+                    <Label Text="МІК 1 (цей телефон)" FontSize="13" TextColor="#CCCCDD"/>
+                    <ProgressBar x:Name="ProgMic1" ProgressColor="#00E676"
+                                 BackgroundColor="#2D2D50" HeightRequest="6"/>
+                    <Slider x:Name="SliderMic1" Minimum="0" Maximum="1" Value="1"
+                            ThumbColor="#00E676" MinimumTrackColor="#00C853"
+                            MaximumTrackColor="#2D2D50"
+                            ValueChanged="OnMic1VolumeChanged"/>
+
+                    <BoxView HeightRequest="1" Color="#2D2D50"/>
+
+                    <Label Text="МІК 2 (інший телефон)" FontSize="13" TextColor="#CCCCDD"/>
+                    <ProgressBar x:Name="ProgMic2" ProgressColor="#FF6B6B"
+                                 BackgroundColor="#2D2D50" HeightRequest="6"/>
+                    <Slider x:Name="SliderMic2" Minimum="0" Maximum="1" Value="1"
+                            ThumbColor="#FF6B6B" MinimumTrackColor="#FF5252"
+                            MaximumTrackColor="#2D2D50"
+                            ValueChanged="OnMic2VolumeChanged"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Button Text="← Назад" BackgroundColor="Transparent"
+                    TextColor="#555577" FontSize="14" Clicked="OnBackClicked"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
