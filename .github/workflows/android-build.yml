@@ -1,0 +1,164 @@
+name: Android Build APK
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  OUTPUT_DIR: 'artifacts/android'
+  TFM: 'net9.0-android'
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find MAUI project file
+        id: find_proj
+        run: |
+          find . -maxdepth 5 -name "*.csproj" ! -path "*/obj/*"
+          CSPROJ=$(grep -rl "UseMaui\|net.*android" . --include="*.csproj" --exclude-dir=obj | head -1)
+          [ -z "$CSPROJ" ] && { echo "csproj not found"; exit 1; }
+          CSPROJ="${CSPROJ#./}"
+          echo "Found: $CSPROJ"
+          echo "project_path=${CSPROJ}" >> $GITHUB_OUTPUT
+
+      - name: Patch source files
+        run: |
+          DIR=$(dirname "${{ steps.find_proj.outputs.project_path }}")
+          CSPROJ="${{ steps.find_proj.outputs.project_path }}"
+
+          # Copy pre-made patch files from .github/patches/
+          cp .github/patches/MauiProgram.cs  "${DIR}/MauiProgram.cs"
+          cp .github/patches/App.xaml.cs     "${DIR}/App.xaml.cs"
+          # Delete GlobalUsings.cs if present (global usings for Views/Models fail before XAML compiles)
+          rm -f "${DIR}/GlobalUsings.cs"
+
+          echo "=== MauiProgram.cs written ==="
+          head -5 "${DIR}/MauiProgram.cs"
+
+          # Patch csproj
+          sed -i 's/net8\.0-android/net9.0-android/g' "$CSPROJ"
+          sed -i 's|Views\\MainPage\.xaml|Views/MainPage.xaml|g'     "$CSPROJ"
+          sed -i 's|Views\\HostPage\.xaml|Views/HostPage.xaml|g'     "$CSPROJ"
+          sed -i 's|Views\\ClientPage\.xaml|Views/ClientPage.xaml|g' "$CSPROJ"
+          sed -i 's|<TargetFrameworks>[^<]*</TargetFrameworks>|<TargetFrameworks>net9.0-android</TargetFrameworks>|g' "$CSPROJ"
+          grep -q 'Platforms/iOS' "$CSPROJ" || sed -i \
+            's|</Project>|  <ItemGroup Condition="$(TargetFramework.Contains('"'"'-android'"'"'))">\n    <Compile Remove="Platforms/iOS/**" />\n    <Compile Remove="Platforms/MacCatalyst/**" />\n    <Compile Remove="Platforms/Windows/**" />\n  </ItemGroup>\n</Project>|' \
+            "$CSPROJ"
+
+          echo "=== TargetFrameworks ==="
+          grep "TargetFramework" "$CSPROJ"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Android SDK packages
+        run: |
+          SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDKMANAGER" ]; then
+            SDKMANAGER=$(find "${ANDROID_SDK_ROOT}/cmdline-tools" -name "sdkmanager" -type f | head -1)
+          fi
+          echo "yes" | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      - name: Install MAUI Android workload
+        run: dotnet workload install maui-android --skip-sign-check
+
+      - name: Restore NuGet packages
+        run: |
+          dotnet restore "${{ steps.find_proj.outputs.project_path }}" \
+            -p:TargetFramework=${{ env.TFM }}
+
+      - name: Set build version
+        id: version
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          NUM=$(git rev-list --count HEAD)
+          echo "sha=${SHA}"                     >> $GITHUB_OUTPUT
+          echo "build_number=${NUM}"            >> $GITHUB_OUTPUT
+          echo "version_name=1.0.${NUM}-${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build Debug APK
+        run: |
+          dotnet build "${{ steps.find_proj.outputs.project_path }}" \
+            -p:TargetFramework=${{ env.TFM }} \
+            -c Debug \
+            -p:AndroidPackageFormats=apk \
+            -p:ApplicationVersion=${{ steps.version.outputs.build_number }} \
+            -p:ApplicationDisplayVersion=${{ steps.version.outputs.version_name }} \
+            -o ${{ env.OUTPUT_DIR }}
+
+      - name: Build Release APK
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEY_ALIAS:    ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS:     ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASS:   ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then echo "No keystore, skipping"; exit 0; fi
+          echo "$KEYSTORE_B64" | base64 --decode > /tmp/release.keystore
+          dotnet publish "${{ steps.find_proj.outputs.project_path }}" \
+            -p:TargetFramework=${{ env.TFM }} \
+            -c Release \
+            -p:AndroidPackageFormats=apk \
+            -p:AndroidKeyStore=true \
+            -p:AndroidSigningKeyStore=/tmp/release.keystore \
+            -p:AndroidSigningKeyAlias="$KEY_ALIAS" \
+            -p:AndroidSigningKeyPass="$KEY_PASS" \
+            -p:AndroidSigningStorePass="$STORE_PASS" \
+            -p:ApplicationVersion=${{ steps.version.outputs.build_number }} \
+            -p:ApplicationDisplayVersion=${{ steps.version.outputs.version_name }} \
+            -o ${{ env.OUTPUT_DIR }}/release
+          rm -f /tmp/release.keystore
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KaraokeApp-debug-${{ steps.version.outputs.sha }}
+          path: |
+            **/*.apk
+            !**/obj/**
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Release APK
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KaraokeApp-release-${{ steps.version.outputs.version_name }}
+          path: ${{ env.OUTPUT_DIR }}/release/**/*.apk
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## JBL Karaoke Android Build"                              >> $GITHUB_STEP_SUMMARY
+          echo "| | |"                                                      >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|"                                                   >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ steps.version.outputs.version_name }} |"   >> $GITHUB_STEP_SUMMARY
+          echo "| Commit  | ${{ steps.version.outputs.sha }} |"            >> $GITHUB_STEP_SUMMARY
+          echo "| Branch  | ${{ github.ref_name }} |"                      >> $GITHUB_STEP_SUMMARY
+          find . -name "*.apk" ! -path "*/obj/*" | while read f; do
+            echo "- $(basename $f)" >> $GITHUB_STEP_SUMMARY
+          done
