@@ -3,18 +3,6 @@
   "WorkspaceRootPath": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{FEE121B2-61C0-428E-8278-0AD56A0AF859}|KaraokeApp.csproj|f:\\users\\user\\source\\repos\\maui\\karaokeapp\\platforms\\android\\iaudioplatform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{FEE121B2-61C0-428E-8278-0AD56A0AF859}|KaraokeApp.csproj|solutionrelative:platforms\\android\\iaudioplatform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{FEE121B2-61C0-428E-8278-0AD56A0AF859}|KaraokeApp.csproj|f:\\users\\user\\source\\repos\\maui\\karaokeapp\\platforms\\android\\androidaudio.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{FEE121B2-61C0-428E-8278-0AD56A0AF859}|KaraokeApp.csproj|solutionrelative:platforms\\android\\androidaudio.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{FEE121B2-61C0-428E-8278-0AD56A0AF859}|KaraokeApp.csproj|f:\\users\\user\\source\\repos\\maui\\karaokeapp\\platforms\\ios\\iosaudio.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{FEE121B2-61C0-428E-8278-0AD56A0AF859}|KaraokeApp.csproj|solutionrelative:platforms\\ios\\iosaudio.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{FEE121B2-61C0-428E-8278-0AD56A0AF859}|KaraokeApp.csproj|f:\\users\\user\\source\\repos\\maui\\karaokeapp\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{FEE121B2-61C0-428E-8278-0AD56A0AF859}|KaraokeApp.csproj|solutionrelative:app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
@@ -35,89 +23,53 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "iOSAudio.cs",
-              "DocumentMoniker": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\Platforms\\iOS\\iOSAudio.cs",
-              "RelativeDocumentMoniker": "Platforms\\iOS\\iOSAudio.cs",
-              "ToolTip": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\Platforms\\iOS\\iOSAudio.cs",
-              "RelativeToolTip": "Platforms\\iOS\\iOSAudio.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAWAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-21T15:41:04.212Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "IAudioPlatform.cs",
-              "DocumentMoniker": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\Platforms\\Android\\IAudioPlatform.cs",
-              "RelativeDocumentMoniker": "Platforms\\Android\\IAudioPlatform.cs",
-              "ToolTip": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\Platforms\\Android\\IAudioPlatform.cs",
-              "RelativeToolTip": "Platforms\\Android\\IAudioPlatform.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-21T15:40:25.016Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "AndroidAudio.cs",
-              "DocumentMoniker": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\Platforms\\Android\\AndroidAudio.cs",
-              "RelativeDocumentMoniker": "Platforms\\Android\\AndroidAudio.cs",
-              "ToolTip": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\Platforms\\Android\\AndroidAudio.cs",
-              "RelativeToolTip": "Platforms\\Android\\AndroidAudio.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-21T15:38:44.856Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
               "Title": "App.xaml",
               "DocumentMoniker": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\App.xaml",
               "RelativeDocumentMoniker": "App.xaml",
               "ToolTip": "F:\\Users\\User\\Source\\Repos\\maui\\KaraokeApp\\App.xaml",
               "RelativeToolTip": "App.xaml",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAzAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
               "WhenOpened": "2026-03-21T15:01:51.589Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 3,
               "Title": "Microsoft.NET.Windows.targets",
               "DocumentMoniker": "C:\\Program Files\\dotnet\\sdk\\8.0.400\\Sdks\\Microsoft.NET.Sdk\\targets\\Microsoft.NET.Windows.targets",
               "ToolTip": "C:\\Program Files\\dotnet\\sdk\\8.0.400\\Sdks\\Microsoft.NET.Sdk\\targets\\Microsoft.NET.Windows.targets",
               "ViewState": "AgIAACYAAAAAAAAAAAAjwC4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
-              "WhenOpened": "2026-03-21T13:34:08.359Z"
+              "WhenOpened": "2026-03-21T13:34:08.359Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 2,
               "Title": "Xamarin.Android.Tooling.targets",
               "DocumentMoniker": "C:\\Program Files\\dotnet\\packs\\Microsoft.Android.Sdk.Windows\\34.0.154\\tools\\Xamarin.Android.Tooling.targets",
               "ToolTip": "C:\\Program Files\\dotnet\\packs\\Microsoft.Android.Sdk.Windows\\34.0.154\\tools\\Xamarin.Android.Tooling.targets",
               "ViewState": "AgIAADcAAAAAAAAAAAAjwEUAAAAEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
-              "WhenOpened": "2026-03-21T13:24:07.355Z"
+              "WhenOpened": "2026-03-21T13:24:07.355Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 1,
               "Title": "CommunityToolkit.Mvvm.WindowsSdk.targets",
               "DocumentMoniker": "C:\\Users\\User\\.nuget\\packages\\communitytoolkit.mvvm\\8.4.1\\buildTransitive\\CommunityToolkit.Mvvm.WindowsSdk.targets",
               "ToolTip": "C:\\Users\\User\\.nuget\\packages\\communitytoolkit.mvvm\\8.4.1\\buildTransitive\\CommunityToolkit.Mvvm.WindowsSdk.targets",
               "ViewState": "AgIAAEEAAAAAAAAAAAAUwFEAAABFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
-              "WhenOpened": "2026-03-21T13:23:35.915Z"
+              "WhenOpened": "2026-03-21T13:23:35.915Z",
+              "EditorCaption": ""
             }
           ]
         }
