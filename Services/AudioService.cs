@@ -232,5 +232,3 @@ public class AudioService : IAudioService
         return (type, data);
     }
 }
-
-public enum AudioChannel { Mic1, Mic2, Music }
