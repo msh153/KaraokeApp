@@ -1,4 +1,4 @@
-﻿namespace KaraokeApp1;
+﻿namespace KaraokeApp;
 
 public partial class App : Application
 {

@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace KaraokeApp1;
+namespace KaraokeApp;
 
 [Register("AppDelegate")]
 public class AppDelegate : MauiUIApplicationDelegate

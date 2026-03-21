@@ -1,7 +1,7 @@
 ﻿using Android.App;
 using Android.Runtime;
 
-namespace KaraokeApp1;
+namespace KaraokeApp;
 
 [Application]
 public class MainApplication : MauiApplication

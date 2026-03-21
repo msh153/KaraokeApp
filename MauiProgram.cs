@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace KaraokeApp1;
+namespace KaraokeApp;
 
 public static class MauiProgram
 {

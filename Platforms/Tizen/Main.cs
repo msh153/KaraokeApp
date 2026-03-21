@@ -2,7 +2,7 @@ using System;
 using Microsoft.Maui;
 using Microsoft.Maui.Hosting;
 
-namespace KaraokeApp1;
+namespace KaraokeApp;
 
 class Program : MauiApplication
 {
