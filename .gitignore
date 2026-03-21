@@ -1,0 +1,55 @@
+# .NET MAUI generated files
+bin/
+obj/
+
+# .vs (Visual Studio specific)
+.vs/
+
+# User-specific files
+.vscode/
+.idea/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+# .NET Core specific
+project.lock.json
+project.fragment.lock.json
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows Installer
+*.exe
+*.dll
+
+# ASP.NET specific
+appsettings.json
+
+# MAUI specific
+platforms/
+
+# Apple specific
+ios/
+macos/
+watchos/
+tvos/
+
+# Android specific
+android/
+
+# Generated APKs
+*.apk
+*.aab
+
+# User-specific config files
+.vscode/
+.idea/
+
+# Debug
+*.log
+*.tlog
