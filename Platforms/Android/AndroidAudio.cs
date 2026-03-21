@@ -1,5 +1,5 @@
 using Android.Media;
-using KaraokeApp.Models;
+using KaraokeApp.Platforms.iOS;
 using KaraokeApp.Services;
 
 namespace KaraokeApp.Platforms.Android;
@@ -9,14 +9,17 @@ public class AndroidAudioCapture : IAudioCapture
     private AudioRecord? _audioRecord;
     private bool _isCapturing;
 
-    public async Task StartCaptureAsync(AudioSettings settings, Action<byte[]> onData, CancellationToken ct)
+    public async Task StartCaptureAsync(
+        AudioSettings settings,
+        Action<byte[]> onData,
+        CancellationToken ct)
     {
         var channelConfig = ChannelIn.Mono;
         var audioFormat = Encoding.Pcm16bit;
         var sampleRate = settings.SampleRate;
 
-        var minBufferSize = AudioRecord.GetMinBufferSize(sampleRate, channelConfig, audioFormat);
-        var bufferSize = Math.Max(settings.BufferSize, minBufferSize);
+        var minBuf = AudioRecord.GetMinBufferSize(sampleRate, channelConfig, audioFormat);
+        var bufferSize = Math.Max(settings.BufferSize, minBuf);
 
         _audioRecord = new AudioRecord(
             AudioSource.Mic,
@@ -43,17 +46,16 @@ public class AndroidAudioCapture : IAudioCapture
                     Buffer.BlockCopy(buffer, 0, data, 0, read);
                     onData(data);
                 }
-                await Task.Delay(1, ct);
+                await Task.Delay(1, ct).ConfigureAwait(false);
             }
-        }, ct);
+        }, ct).ConfigureAwait(false);
     }
 
     public Task StopCaptureAsync()
     {
         _isCapturing = false;
-        _audioRecord?.Stop();
-        _audioRecord?.Release();
-        _audioRecord?.Dispose();
+        try { _audioRecord?.Stop(); _audioRecord?.Release(); _audioRecord?.Dispose(); }
+        catch { /* ignore */ }
         _audioRecord = null;
         return Task.CompletedTask;
     }
@@ -64,15 +66,12 @@ public class AndroidAudioPlayer : IAudioPlayer
     private AudioTrack? _micMixTrack;
     private MediaPlayer? _mediaPlayer;
     private readonly object _lock = new();
-    private float _mic1Vol = 1f, _mic2Vol = 1f, _musicVol = 0.8f;
     private bool _initialized;
 
     private void EnsureTrack(int sampleRate = 44100)
     {
         if (_initialized) return;
-
         var minBuf = AudioTrack.GetMinBufferSize(sampleRate, ChannelOut.Mono, Encoding.Pcm16bit);
-
         _micMixTrack = new AudioTrack.Builder()
             .SetAudioAttributes(new AudioAttributes.Builder()
                 .SetUsage(AudioUsageKind.Media)
@@ -86,7 +85,6 @@ public class AndroidAudioPlayer : IAudioPlayer
             .SetBufferSizeInBytes(minBuf * 4)
             .SetTransferMode(AudioTrackMode.Stream)
             .Build();
-
         _micMixTrack.Play();
         _initialized = true;
     }
@@ -97,8 +95,6 @@ public class AndroidAudioPlayer : IAudioPlayer
         {
             EnsureTrack();
             if (_micMixTrack == null) return;
-
-            // Apply volume scaling to PCM samples
             var scaled = ApplyVolume(pcmData, volume);
             _micMixTrack.Write(scaled, 0, scaled.Length);
         }
@@ -119,46 +115,38 @@ public class AndroidAudioPlayer : IAudioPlayer
 
     public void PlayMusic(string filePath, float volume)
     {
-        _mediaPlayer?.Stop();
-        _mediaPlayer?.Release();
+        _mediaPlayer?.Stop(); _mediaPlayer?.Release();
         _mediaPlayer = new MediaPlayer();
         _mediaPlayer.SetDataSource(filePath);
         _mediaPlayer.SetVolume(volume, volume);
         _mediaPlayer.Prepare();
         _mediaPlayer.Start();
-        _musicVol = volume;
     }
 
     public void PauseMusic()
     {
-        if (_mediaPlayer?.IsPlaying == true)
-            _mediaPlayer.Pause();
+        if (_mediaPlayer?.IsPlaying == true) _mediaPlayer.Pause();
     }
 
     public void StopMusic()
     {
-        _mediaPlayer?.Stop();
-        _mediaPlayer?.Release();
-        _mediaPlayer = null;
+        _mediaPlayer?.Stop(); _mediaPlayer?.Release(); _mediaPlayer = null;
     }
 
     public void StopAll()
     {
         StopMusic();
-        _micMixTrack?.Pause();
-        _micMixTrack?.Flush();
-        _micMixTrack?.Release();
-        _micMixTrack = null;
-        _initialized = false;
+        lock (_lock)
+        {
+            _micMixTrack?.Pause(); _micMixTrack?.Flush();
+            _micMixTrack?.Release(); _micMixTrack = null;
+            _initialized = false;
+        }
     }
 
     public void UpdateVolumes(AudioSettings settings)
     {
-        _mic1Vol = settings.Mic1Muted ? 0f : settings.Mic1Volume;
-        _mic2Vol = settings.Mic2Muted ? 0f : settings.Mic2Volume;
-        _musicVol = settings.MusicMuted ? 0f : settings.MusicVolume;
-
-        if (_mediaPlayer != null)
-            _mediaPlayer.SetVolume(_musicVol, _musicVol);
+        var vol = settings.MusicMuted ? 0f : settings.MusicVolume;
+        _mediaPlayer?.SetVolume(vol, vol);
     }
 }

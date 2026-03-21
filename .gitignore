@@ -4,6 +4,9 @@ obj/
 
 # .vs (Visual Studio specific)
 .vs/
+*.db
+*.db-shm
+*.db-wal
 
 # User-specific files
 .vscode/
