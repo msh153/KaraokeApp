@@ -30,18 +30,6 @@ project.fragment.lock.json
 # ASP.NET specific
 appsettings.json
 
-# MAUI specific
-platforms/
-
-# Apple specific
-ios/
-macos/
-watchos/
-tvos/
-
-# Android specific
-android/
-
 # Generated APKs
 *.apk
 *.aab
