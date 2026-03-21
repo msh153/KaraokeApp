@@ -4,7 +4,7 @@ using AudioUnit;
 using KaraokeApp.Models;
 using KaraokeApp.Services;
 
-namespace KaraokeApp.Platforms.iOS;
+namespace KaraokeApp;
 
 public class iOSAudioCapture : IAudioCapture
 {
