@@ -10,7 +10,10 @@ public partial class HostViewModel : ObservableObject
     private readonly IAudioService _audio;
     private readonly SessionService _session;
     private readonly IBluetoothService _bt;
+    private readonly IHeadsetService _headset;
     private bool _permissionsGranted;
+    private CancellationTokenSource? _scanCts;
+    private FileResult? _musicFileResult;
 
     [ObservableProperty] private string _statusText = "Готовий до підключення";
     [ObservableProperty] private string _speakerStatus = "🔴 JBL не підключений";
@@ -20,93 +23,189 @@ public partial class HostViewModel : ObservableObject
     [ObservableProperty] private string _selectedMusicName = "Музика не обрана";
     [ObservableProperty] private bool _isSessionActive;
     [ObservableProperty] private bool _isMusicPlaying;
-
-    // Volume sliders (0..1)
+    [ObservableProperty] private bool _isSoloMode = true;
     [ObservableProperty] private double _musicVolume = 0.8;
     [ObservableProperty] private double _mic1Volume = 1.0;
     [ObservableProperty] private double _mic2Volume = 1.0;
-
-    // VU meters (0..1)
     [ObservableProperty] private double _mic1Level;
     [ObservableProperty] private double _mic2Level;
-
-    // Mute toggles
     [ObservableProperty] private bool _musicMuted;
     [ObservableProperty] private bool _mic1Muted;
     [ObservableProperty] private bool _mic2Muted;
-
     [ObservableProperty] private List<BluetoothDevice> _availableDevices = new();
     [ObservableProperty] private bool _isScanning;
+    [ObservableProperty] private string _audioOutputStatus = "🔈 Телефонний динамік";
+    [ObservableProperty] private bool _isHeadsetConnected;
 
-    public HostViewModel(IAudioService audio, SessionService session, IBluetoothService bt)
+    public HostViewModel(IAudioService audio, SessionService session,
+                         IBluetoothService bt, IHeadsetService headset)
     {
         _audio = audio;
         _session = session;
         _bt = bt;
+        _headset = headset;
 
         _audio.Mic1LevelChanged += (_, v) => Mic1Level = v;
         _audio.Mic2LevelChanged += (_, v) => Mic2Level = v;
-        _bt.DeviceConnected += (_, d) => SpeakerStatus = $"🟢 {d.Name} підключений";
-        _bt.DeviceDisconnected += (_, _) => SpeakerStatus = "🔴 JBL відключений";
-        _bt.DeviceFound += (_, d) => { if (!AvailableDevices.Any(x => x.Id == d.Id)) AvailableDevices = new(AvailableDevices) { d }; };
-        _session.ClientConnected += (_, ip) => { ClientStatus = $"🟢 Клієнт: {ip}"; StatusText = "Клієнт підключився!"; };
-        _session.ClientDisconnected += (_, _) => { ClientStatus = "🔴 Клієнт відключився"; };
+
+        _bt.DeviceConnected += (_, d) =>
+            MainThread.BeginInvokeOnMainThread(() =>
+                SpeakerStatus = $"🟢 {d.Name} підключений");
+        _bt.DeviceDisconnected += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(() =>
+                SpeakerStatus = "🔴 JBL відключений");
+        _bt.DeviceFound += (_, d) =>
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (!AvailableDevices.Any(x => x.Id == d.Id))
+                    AvailableDevices = new(AvailableDevices) { d };
+            });
+        _bt.ErrorOccurred += (_, msg) =>
+            MainThread.BeginInvokeOnMainThread(() => StatusText = $"❌ {msg}");
+
+        _session.ClientConnected += (_, ip) =>
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ClientStatus = $"🟢 Клієнт: {ip}";
+                StatusText = "Клієнт підключився!";
+            });
+        _session.ClientDisconnected += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(() =>
+                ClientStatus = "🔴 Клієнт відключився");
+
+        _headset.OutputChanged += (_, type) =>
+            MainThread.BeginInvokeOnMainThread(() => UpdateAudioOutput(type));
+        UpdateAudioOutput(_headset.GetCurrentOutput());
+    }
+
+    private void UpdateAudioOutput(AudioOutputType type)
+    {
+        IsHeadsetConnected = type != AudioOutputType.Speaker;
+        AudioOutputStatus = type switch
+        {
+            AudioOutputType.WiredHeadset => "🎧 Дротова гарнітура",
+            AudioOutputType.Bluetooth => "🔵 Bluetooth навушники",
+            _ => "🔈 Телефонний динамік"
+        };
     }
 
     public async Task InitAsync()
     {
-        var result = await PermissionService.CheckAndRequestAllAsync();
-        _permissionsGranted = result.AllGranted;
-
-        if (!result.AllGranted)
+        _permissionsGranted = await PermissionService.EnsureMicrophoneAsync();
+        if (!_permissionsGranted)
         {
-            StatusText = $"⚠️ Немає дозволів: {string.Join(", ", result.Denied)}. " +
-                         "Надайте дозволи в Налаштуваннях.";
+            StatusText = "⚠️ Потрібен дозвіл на мікрофон";
+            return;
         }
+        // Bluetooth — запитуємо тут щоб не питати при кожному скануванні
+        await PermissionService.EnsureBluetoothAsync();
+
+        // Застосувати початкові налаштування гучності
+        ApplySettings();
     }
 
     [RelayCommand]
     private async Task ScanForSpeakerAsync()
     {
-        if (!_permissionsGranted)
+        try
         {
-            StatusText = "⚠️ Спочатку надайте всі необхідні дозволи.";
-            return;
+            if (!_bt.IsBluetoothOn)
+            {
+                StatusText = "⚠️ Увімкніть Bluetooth і спробуйте знову";
+                return;
+            }
+
+            // Якщо вже сканує — зупинити
+            if (IsScanning)
+            {
+                _scanCts?.Cancel();
+                IsScanning = false; // ← обов'язково скинути
+                StatusText = "Сканування зупинено";
+                return;
+            }
+
+            if (!await PermissionService.EnsureBluetoothAsync())
+            {
+                StatusText = "⚠️ Потрібен дозвіл на Bluetooth";
+                return;
+            }
+
+            _scanCts = new CancellationTokenSource();
+            IsScanning = true;
+            AvailableDevices = new();
+            StatusText = "Сканування...";
+
+            await _bt.StartScanAsync(_scanCts.Token);
+
+            IsScanning = false;
+            StatusText = AvailableDevices.Count > 0
+                ? $"Знайдено {AvailableDevices.Count} пристроїв"
+                : "Пристрої не знайдені";
         }
-        IsScanning = true;
-        AvailableDevices = new();
-        StatusText = "Сканування Bluetooth пристроїв...";
-        await _bt.StartScanAsync();
-        await Task.Delay(8000);
-        await _bt.StopScanAsync();
-        IsScanning = false;
-        StatusText = AvailableDevices.Count > 0
-            ? $"Знайдено {AvailableDevices.Count} пристроїв"
-            : "Пристрої не знайдені";
+        catch (OperationCanceledException)
+        {
+            IsScanning = false;
+            StatusText = "Сканування зупинено";
+        }
+        catch (Exception ex)
+        {
+            IsScanning = false;
+            StatusText = $"❌ Помилка: {ex.Message}";
+        }
+        finally
+        {
+            _scanCts?.Dispose();
+            _scanCts = null;
+        }
     }
 
     [RelayCommand]
     private async Task ConnectToSpeakerAsync(BluetoothDevice device)
     {
-        StatusText = $"Підключення до {device.Name}...";
-        var ok = await _bt.ConnectToSpeakerAsync(device);
-        StatusText = ok ? $"Підключено до {device.Name}!" : "Помилка підключення";
+        try
+        {
+            StatusText = $"Підключення до {device.Name}...";
+            var ok = await _bt.ConnectToSpeakerAsync(device);
+            StatusText = ok ? $"Підключено до {device.Name}!" : "Помилка підключення";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"❌ Помилка: {ex.Message}";
+        }
     }
 
     [RelayCommand]
     private async Task StartSessionAsync()
     {
-        if (!_permissionsGranted)
+        try
         {
-            StatusText = "⚠️ Спочатку надайте всі необхідні дозволи.";
-            return;
-        }
-        await _session.StartHostSessionAsync();
-        SessionCode = _session.CurrentSession?.SessionId ?? "";
-        IsSessionActive = true;
-        StatusText = "Сесія запущена. Поділіться кодом з клієнтом.";
+            if (!_permissionsGranted)
+            {
+                StatusText = "⚠️ Спочатку надайте дозвіл на мікрофон.";
+                return;
+            }
 
-        await _audio.StartHostModeAsync(_session.CurrentSession!);
+            if (IsSoloMode)
+            {
+                StatusText = "Запускання соло режиму...";
+                await _audio.StartSoloModeAsync();
+                IsSessionActive = true;
+                StatusText = "Соло режим активний 🎤";
+            }
+            else
+            {
+                StatusText = "Запускання сесії...";
+                await _session.StartHostSessionAsync();
+                SessionCode = _session.CurrentSession?.SessionId ?? "";
+                IsSessionActive = true;
+                StatusText = "Сесія запущена. Поділіться кодом з клієнтом.";
+                await _audio.StartHostModeAsync(_session.CurrentSession!);
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"❌ Помилка: {ex.Message}";
+        }
     }
 
     [RelayCommand]
@@ -122,29 +221,69 @@ public partial class HostViewModel : ObservableObject
     [RelayCommand]
     private async Task PickMusicAsync()
     {
-        var path = await _audio.PickMusicFileAsync();
-        if (path != null)
+        try
         {
-            SelectedMusicPath = path;
-            SelectedMusicName = Path.GetFileNameWithoutExtension(path);
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Оберіть музичний файл",
+                FileTypes = new FilePickerFileType(
+                    new Dictionary<DevicePlatform, IEnumerable<string>>
+                    {
+                        { DevicePlatform.Android, new[] { "audio/*" } },
+                    })
+            });
+
+            if (result == null) return;
+
+            _musicFileResult = result;
+            SelectedMusicName = Path.GetFileNameWithoutExtension(result.FileName);
+            StatusText = $"🎵 Обрано: {SelectedMusicName}"; // ← підтвердження що обрано
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"❌ Помилка вибору файлу: {ex.Message}";
         }
     }
 
     [RelayCommand]
-    private void ToggleMusic()
+    private async Task ToggleMusicAsync()
     {
-        if (SelectedMusicPath == null) return;
+        if (_musicFileResult == null)
+        {
+            StatusText = "⚠️ Спочатку оберіть музику";
+            return;
+        }
 
         if (IsMusicPlaying)
         {
             _audio.PauseMusic();
             IsMusicPlaying = false;
+            return;
         }
-        else
+
+        // Копіюємо у кеш щоб уникнути проблем з content:// URI
+        var cachedPath = Path.Combine(FileSystem.CacheDirectory, _musicFileResult.FileName);
+        if (!File.Exists(cachedPath))
         {
-            _audio.PlayMusic(SelectedMusicPath);
-            IsMusicPlaying = true;
+            try
+            {
+                StatusText = "Завантаження файлу...";
+                await using var src = await _musicFileResult.OpenReadAsync();
+                await using var dst = File.Create(cachedPath);
+                await src.CopyToAsync(dst);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"❌ Не вдалось відкрити файл: {ex.Message}";
+                return;
+            }
         }
+
+        SelectedMusicPath = cachedPath;
+        ApplySettings();
+        _audio.PlayMusic(cachedPath);
+        IsMusicPlaying = true;
+        StatusText = $"▶ {SelectedMusicName}";
     }
 
     partial void OnMusicVolumeChanged(double value) => ApplySettings();

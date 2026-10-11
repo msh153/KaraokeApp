@@ -32,5 +32,5 @@ public class AudioSettings
     public bool Mic2Muted { get; set; }
     public bool MusicMuted { get; set; }
     public int SampleRate { get; set; } = 44100;
-    public int BufferSize { get; set; } = 4096;
+    public int BufferSize { get; set; } = 512;
 }

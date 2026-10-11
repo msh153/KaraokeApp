@@ -1,174 +1,123 @@
-using Plugin.BLE;
-using Plugin.BLE.Abstractions.Contracts;
-using Plugin.BLE.Abstractions.EventArgs;
+using Android.Bluetooth;
+using Android.Content;
+using Android.Media;
 using KaraokeApp.Models;
+
+using AppBtDevice = KaraokeApp.Models.BluetoothDevice;
 
 namespace KaraokeApp.Services;
 
 public interface IBluetoothService
 {
     bool IsBluetoothOn { get; }
-    IReadOnlyList<BluetoothDevice> DiscoveredDevices { get; }
-    BluetoothDevice? ConnectedSpeaker { get; }
+    IReadOnlyList<AppBtDevice> DiscoveredDevices { get; }
+    AppBtDevice? ConnectedSpeaker { get; }
 
-    event EventHandler<BluetoothDevice> DeviceFound;
-    event EventHandler<BluetoothDevice> DeviceConnected;
-    event EventHandler<BluetoothDevice> DeviceDisconnected;
+    event EventHandler<AppBtDevice> DeviceFound;
+    event EventHandler<AppBtDevice> DeviceConnected;
+    event EventHandler<AppBtDevice> DeviceDisconnected;
     event EventHandler<string> ErrorOccurred;
 
     Task<bool> StartScanAsync(CancellationToken ct = default);
     Task StopScanAsync();
-    Task<bool> ConnectToSpeakerAsync(BluetoothDevice device);
+    Task<bool> ConnectToSpeakerAsync(AppBtDevice device);
     Task DisconnectSpeakerAsync();
 }
 
 public class BluetoothService : IBluetoothService
 {
-    private readonly IBluetoothLE _ble;
-    private readonly IAdapter _adapter;
-    private readonly List<BluetoothDevice> _discoveredDevices = new();
-    private BluetoothDevice? _connectedSpeaker;
-    private IDevice? _connectedBleDevice;
+    private readonly AudioManager _audioManager;
+    private AppBtDevice? _connectedSpeaker;
 
-    public bool IsBluetoothOn => _ble.IsOn;
-    public IReadOnlyList<BluetoothDevice> DiscoveredDevices => _discoveredDevices.AsReadOnly();
-    public BluetoothDevice? ConnectedSpeaker => _connectedSpeaker;
+#pragma warning disable CA1422
+    public bool IsBluetoothOn =>
+        BluetoothAdapter.DefaultAdapter?.IsEnabled ?? false;
+#pragma warning restore CA1422
 
-    public event EventHandler<BluetoothDevice>? DeviceFound;
-    public event EventHandler<BluetoothDevice>? DeviceConnected;
-    public event EventHandler<BluetoothDevice>? DeviceDisconnected;
-    public event EventHandler<string>? ErrorOccurred;
+    public IReadOnlyList<AppBtDevice> DiscoveredDevices =>
+        _connectedSpeaker != null
+            ? new List<AppBtDevice> { _connectedSpeaker }
+            : new List<AppBtDevice>();
+
+    public AppBtDevice? ConnectedSpeaker => _connectedSpeaker;
+
+    public event EventHandler<AppBtDevice>? DeviceFound;
+    public event EventHandler<AppBtDevice>? DeviceConnected;
+    public event EventHandler<AppBtDevice>? DeviceDisconnected;
+    public event EventHandler<string>? ErrorOccurred = delegate { };
 
     public BluetoothService()
     {
-        _ble = CrossBluetoothLE.Current;
-        _adapter = CrossBluetoothLE.Current.Adapter;
-        _adapter.ScanTimeout = 15000;
+        _audioManager = (AudioManager)
+            Platform.AppContext.GetSystemService(Context.AudioService)!;
 
-        _adapter.DeviceDiscovered += OnDeviceDiscovered;
-        _adapter.DeviceConnected += OnDeviceConnected;
-        _adapter.DeviceDisconnected += OnDeviceDisconnected;
-        _adapter.DeviceConnectionLost += OnConnectionLost;
+        var filter = new IntentFilter();
+        filter.AddAction(BluetoothA2dp.ActionConnectionStateChanged);
+        Platform.AppContext.RegisterReceiver(new A2dpReceiver(this), filter);
     }
 
-    public async Task<bool> StartScanAsync(CancellationToken ct = default)
+    public Task<bool> StartScanAsync(CancellationToken ct = default)
     {
-        if (!_ble.IsOn)
-        {
-            ErrorOccurred?.Invoke(this, "Bluetooth вимкнений. Увімкніть Bluetooth і спробуйте знову.");
-            return false;
-        }
-
-        _discoveredDevices.Clear();
-
-        try
-        {
-            await _adapter.StartScanningForDevicesAsync(cancellationToken: ct);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            ErrorOccurred?.Invoke(this, $"Помилка сканування: {ex.Message}");
-            return false;
-        }
+        RefreshConnectedDevice();
+        return Task.FromResult(true);
     }
 
-    public async Task StopScanAsync()
-    {
-        try
-        {
-            await _adapter.StopScanningForDevicesAsync();
-        }
-        catch { /* ignore */ }
-    }
+    public Task StopScanAsync() => Task.CompletedTask;
 
-    public async Task<bool> ConnectToSpeakerAsync(BluetoothDevice device)
-    {
-        try
-        {
-            var bleDevice = _adapter.DiscoveredDevices
-                .FirstOrDefault(d => d.Id.ToString() == device.Id);
+    public Task<bool> ConnectToSpeakerAsync(AppBtDevice device)
+        => Task.FromResult(true);
 
-            if (bleDevice == null)
+    public Task DisconnectSpeakerAsync() => Task.CompletedTask;
+
+    public void RefreshConnectedDevice()
+    {
+        if (!OperatingSystem.IsAndroidVersionAtLeast(23)) return;
+
+        var devices = _audioManager.GetDevices(GetDevicesTargets.Outputs);
+        if (devices == null) return;
+
+        foreach (var d in devices)
+        {
+            if (d.Type == AudioDeviceType.BluetoothA2dp)
             {
-                ErrorOccurred?.Invoke(this, "Пристрій не знайдено. Виконайте повторне сканування.");
-                return false;
-            }
-
-            await _adapter.ConnectToDeviceAsync(bleDevice);
-            _connectedBleDevice = bleDevice;
-            return true;
-        }
-        catch (Exception ex)
-        {
-            ErrorOccurred?.Invoke(this, $"Помилка підключення: {ex.Message}");
-            return false;
-        }
-    }
-
-    public async Task DisconnectSpeakerAsync()
-    {
-        if (_connectedBleDevice != null)
-        {
-            try
-            {
-                await _adapter.DisconnectDeviceAsync(_connectedBleDevice);
-            }
-            catch { /* ignore */ }
-            finally
-            {
-                _connectedBleDevice = null;
-                _connectedSpeaker = null;
+                var dev = new AppBtDevice
+                {
+                    Id = d.Id.ToString(),
+                    Name = d.ProductName?.ToString() ?? "Bluetooth Speaker",
+                    IsConnected = true
+                };
+                _connectedSpeaker = dev;
+                DeviceFound?.Invoke(this, dev);
+                DeviceConnected?.Invoke(this, dev);
+                return;
             }
         }
-    }
 
-    private void OnDeviceDiscovered(object? sender, DeviceEventArgs e)
-    {
-        var name = e.Device.Name ?? "Невідомий пристрій";
-        if (string.IsNullOrWhiteSpace(name)) return;
-
-        var device = new BluetoothDevice
-        {
-            Id = e.Device.Id.ToString(),
-            Name = name,
-            SignalStrength = e.Device.Rssi
-        };
-
-        if (!_discoveredDevices.Any(d => d.Id == device.Id))
-        {
-            _discoveredDevices.Add(device);
-            DeviceFound?.Invoke(this, device);
-        }
-    }
-
-    private void OnDeviceConnected(object? sender, DeviceEventArgs e)
-    {
-        _connectedSpeaker = _discoveredDevices.FirstOrDefault(d => d.Id == e.Device.Id.ToString());
         if (_connectedSpeaker != null)
         {
-            _connectedSpeaker.IsConnected = true;
-            DeviceConnected?.Invoke(this, _connectedSpeaker);
-        }
-    }
-
-    private void OnDeviceDisconnected(object? sender, DeviceEventArgs e)
-    {
-        if (_connectedSpeaker != null)
-        {
-            _connectedSpeaker.IsConnected = false;
             DeviceDisconnected?.Invoke(this, _connectedSpeaker);
             _connectedSpeaker = null;
         }
     }
 
-    private void OnConnectionLost(object? sender, DeviceErrorEventArgs e)
+    private class A2dpReceiver : BroadcastReceiver
     {
-        ErrorOccurred?.Invoke(this, $"З'єднання втрачено: {e.Device?.Name}");
-        if (_connectedSpeaker != null)
+        private readonly BluetoothService _parent;
+        public A2dpReceiver(BluetoothService parent) => _parent = parent;
+
+        private const int StateConnected    = 2;
+        private const int StateDisconnected = 0;
+
+        public override void OnReceive(Context? context, Intent? intent)
         {
-            _connectedSpeaker.IsConnected = false;
-            DeviceDisconnected?.Invoke(this, _connectedSpeaker);
+            if (intent?.Action != BluetoothA2dp.ActionConnectionStateChanged)
+                return;
+
+            var state = intent.GetIntExtra("android.bluetooth.profile.extra.STATE", StateDisconnected);
+
+            if (state == StateConnected || state == StateDisconnected)
+                MainThread.BeginInvokeOnMainThread(() =>
+                    _parent.RefreshConnectedDevice());
         }
     }
 }

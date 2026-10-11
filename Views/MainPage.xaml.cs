@@ -7,13 +7,9 @@ public partial class MainPage : ContentPage
         InitializeComponent();
     }
 
-    private async void OnHostClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("//host");
-    }
+    private async void OnHostClicked(object s, EventArgs e)
+        => await Shell.Current.GoToAsync("//host");
 
-    private async void OnClientClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("//client");
-    }
+    private async void OnClientClicked(object s, EventArgs e)
+        => await Shell.Current.GoToAsync("//client");
 }

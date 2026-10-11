@@ -1,7 +1,8 @@
 using Android.Media;
+using Android.OS;
 using KaraokeApp.Services;
 
-namespace KaraokeApp.Platforms.Android;
+namespace KaraokeApp;
 
 public class AndroidAudioCapture : IAudioCapture
 {
@@ -13,18 +14,15 @@ public class AndroidAudioCapture : IAudioCapture
         Action<byte[]> onData,
         CancellationToken ct)
     {
-        var channelConfig = ChannelIn.Mono;
-        var audioFormat = Encoding.Pcm16bit;
         var sampleRate = settings.SampleRate;
-
-        var minBuf = AudioRecord.GetMinBufferSize(sampleRate, channelConfig, audioFormat);
+        var minBuf = AudioRecord.GetMinBufferSize(sampleRate, ChannelIn.Mono, Encoding.Pcm16bit);
         var bufferSize = Math.Max(settings.BufferSize, minBuf);
 
         _audioRecord = new AudioRecord(
             AudioSource.Mic,
             sampleRate,
-            channelConfig,
-            audioFormat,
+            ChannelIn.Mono,
+            Encoding.Pcm16bit,
             bufferSize);
 
         if (_audioRecord.State != State.Initialized)
@@ -60,6 +58,8 @@ public class AndroidAudioCapture : IAudioCapture
     }
 }
 
+// ── AndroidAudioPlayer ────────────────────────────────────────────────────
+
 public class AndroidAudioPlayer : IAudioPlayer
 {
     private AudioTrack? _micMixTrack;
@@ -68,26 +68,59 @@ public class AndroidAudioPlayer : IAudioPlayer
     private bool _initialized;
 
     private void EnsureTrack(int sampleRate = 44100)
-    {
-        if (_initialized) return;
-        var minBuf = AudioTrack.GetMinBufferSize(sampleRate, ChannelOut.Mono, Encoding.Pcm16bit);
-        _micMixTrack = new AudioTrack.Builder()
-            .SetAudioAttributes(new AudioAttributes.Builder()
-                .SetUsage(AudioUsageKind.Media)
-                .SetContentType(AudioContentType.Music)
-                .Build())
-            .SetAudioFormat(new AudioFormat.Builder()
-                .SetSampleRate(sampleRate)
-                .SetEncoding(Encoding.Pcm16bit)
-                .SetChannelMask(ChannelOut.Mono)
-                .Build())
-            .SetBufferSizeInBytes(minBuf * 4)
-            .SetTransferMode(AudioTrackMode.Stream)
-            .Build();
-        _micMixTrack.Play();
-        _initialized = true;
-    }
+{
+    if (_initialized) return;
 
+    var minBuf = AudioTrack.GetMinBufferSize(
+        sampleRate, ChannelOut.Mono, Encoding.Pcm16bit);
+
+#pragma warning disable CA1416
+    _micMixTrack = new AudioTrack.Builder()
+        .SetAudioAttributes(
+            new AudioAttributes.Builder()!
+                .SetUsage(AudioUsageKind.Media)!
+                .SetContentType(AudioContentType.Music)!
+                .Build()!)
+        .SetAudioFormat(
+            new AudioFormat.Builder()!
+                .SetSampleRate(sampleRate)!
+                .SetEncoding(Encoding.Pcm16bit)!
+                .SetChannelMask(ChannelOut.Mono)!
+                .Build()!)
+        .SetBufferSizeInBytes(minBuf * 4)
+        .SetTransferMode(AudioTrackMode.Stream)
+        .Build();
+#pragma warning restore CA1416
+
+    // ← явно запитати аудіо фокус перед відтворенням
+    RequestAudioFocus();
+    _micMixTrack!.Play();
+    _initialized = true;
+}
+
+private void RequestAudioFocus()
+{
+    var audioManager = Android.Media.AudioManager.FromContext(Platform.AppContext);
+    if (audioManager == null) return;
+
+#pragma warning disable CA1422
+    if (OperatingSystem.IsAndroidVersionAtLeast(26))
+    {
+        var request = new AudioFocusRequestClass.Builder(AudioFocus.Gain)
+            .SetAudioAttributes(
+                new AudioAttributes.Builder()!
+                    .SetUsage(AudioUsageKind.Media)!
+                    .SetContentType(AudioContentType.Music)!
+                    .Build()!)
+            .Build();
+        audioManager.RequestAudioFocus(request);
+    }
+    else
+    {
+        audioManager.RequestAudioFocus(null, Android.Media.Stream.Music, AudioFocus.Gain);
+    }
+#pragma warning restore CA1422
+}
     public void WriteMixBuffer(byte[] pcmData, AudioChannel channel, float volume)
     {
         lock (_lock)
@@ -114,14 +147,43 @@ public class AndroidAudioPlayer : IAudioPlayer
 
     public void PlayMusic(string filePath, float volume)
     {
-        _mediaPlayer?.Stop(); _mediaPlayer?.Release();
-        _mediaPlayer = new MediaPlayer();
-        _mediaPlayer.SetDataSource(filePath);
-        _mediaPlayer.SetVolume(volume, volume);
-        _mediaPlayer.Prepare();
-        _mediaPlayer.Start();
-    }
+        try
+        {
+            _mediaPlayer?.Stop();
+            _mediaPlayer?.Release();
+            _mediaPlayer = new MediaPlayer();
 
+            if (filePath.StartsWith("content://"))
+            {
+                var uri = Android.Net.Uri.Parse(filePath);
+                if (uri != null) // ← перевірка null
+                    _mediaPlayer.SetDataSource(Platform.AppContext, uri);
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[AndroidAudioPlayer] Invalid URI");
+                    return;
+                }
+            }
+            else
+            {
+                _mediaPlayer.SetDataSource(filePath);
+            }
+
+            _mediaPlayer.SetAudioAttributes(
+                new AudioAttributes.Builder()!
+                    .SetUsage(AudioUsageKind.Media)!
+                    .SetContentType(AudioContentType.Music)!
+                    .Build()!);
+
+            _mediaPlayer.SetVolume(volume, volume);
+            _mediaPlayer.Prepare();
+            _mediaPlayer.Start();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AndroidAudioPlayer] PlayMusic error: {ex}");
+        }
+    }
     public void PauseMusic()
     {
         if (_mediaPlayer?.IsPlaying == true) _mediaPlayer.Pause();

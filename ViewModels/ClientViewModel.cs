@@ -37,61 +37,79 @@ public partial class ClientViewModel : ObservableObject
     [RelayCommand]
     private async Task FindAndConnectAsync()
     {
-        IsSearching = true;
-        StatusText = "Пошук хоста у мережі...";
-
-        var session = await _session.DiscoverHostAsync(TimeSpan.FromSeconds(15));
-        if (session == null)
+        try
         {
-            StatusText = "Хост не знайдений. Переконайтесь, що обидва пристрої в одній Wi-Fi мережі.";
+            IsSearching = true;
+            StatusText = "Пошук хоста у мережі...";
+
+            var session = await _session.DiscoverHostAsync(TimeSpan.FromSeconds(15));
+            if (session == null)
+            {
+                StatusText = "Хост не знайдений. Переконайтесь, що обидва пристрої в одній Wi-Fi мережі.";
+                IsSearching = false;
+                return;
+            }
+
+            var joined = await _session.JoinSessionAsync(session);
             IsSearching = false;
-            return;
-        }
 
-        var joined = await _session.JoinSessionAsync(session);
-        IsSearching = false;
-
-        if (joined)
-        {
-            HostStatus = $"🟢 Хост: {session.HostIp}";
-            IsConnected = true;
-            StatusText = "Підключено! Мікрофон готовий.";
-            await _audio.StartClientModeAsync(session);
-            IsMicActive = true;
+            if (joined)
+            {
+                HostStatus = $"🟢 Хост: {session.HostIp}";
+                IsConnected = true;
+                StatusText = "Підключено! Мікрофон готовий.";
+                await _audio.StartClientModeAsync(session);
+                IsMicActive = true;
+            }
+            else
+            {
+                StatusText = "Не вдалось підключитись до хоста.";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            StatusText = "Не вдалось підключитись до хоста.";
+            System.Diagnostics.Debug.WriteLine($"[ClientViewModel] FindAndConnectAsync error: {ex}");
+            IsSearching = false;
+            StatusText = $"❌ Помилка: {ex.Message}";
         }
     }
 
     [RelayCommand]
     private async Task ConnectWithCodeAsync()
     {
-        if (string.IsNullOrWhiteSpace(SessionCode)) return;
-
-        IsSearching = true;
-        StatusText = "Пошук хоста за кодом...";
-
-        var session = await _session.DiscoverHostAsync(TimeSpan.FromSeconds(15));
-
-        if (session?.SessionId?.Equals(SessionCode, StringComparison.OrdinalIgnoreCase) != true)
+        try
         {
-            StatusText = "Сесія з цим кодом не знайдена.";
+            if (string.IsNullOrWhiteSpace(SessionCode)) return;
+
+            IsSearching = true;
+            StatusText = "Пошук хоста за кодом...";
+
+            var session = await _session.DiscoverHostAsync(TimeSpan.FromSeconds(15));
+
+            if (session?.SessionId?.Equals(SessionCode, StringComparison.OrdinalIgnoreCase) != true)
+            {
+                StatusText = "Сесія з цим кодом не знайдена.";
+                IsSearching = false;
+                return;
+            }
+
+            var joined = await _session.JoinSessionAsync(session);
             IsSearching = false;
-            return;
+
+            if (joined)
+            {
+                HostStatus = $"🟢 Хост знайдений ({session.SessionId})";
+                IsConnected = true;
+                StatusText = "Підключено! Починайте співати!";
+                await _audio.StartClientModeAsync(session);
+                IsMicActive = true;
+            }
         }
-
-        var joined = await _session.JoinSessionAsync(session);
-        IsSearching = false;
-
-        if (joined)
+        catch (Exception ex)
         {
-            HostStatus = $"🟢 Хост знайдений ({session.SessionId})";
-            IsConnected = true;
-            StatusText = "Підключено! Починайте співати!";
-            await _audio.StartClientModeAsync(session);
-            IsMicActive = true;
+            System.Diagnostics.Debug.WriteLine($"[ClientViewModel] ConnectWithCodeAsync error: {ex}");
+            IsSearching = false;
+            StatusText = $"❌ Помилка: {ex.Message}";
         }
     }
 

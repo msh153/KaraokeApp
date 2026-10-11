@@ -3,11 +3,11 @@ using Android.Content.PM;
 using Android.OS;
 using Plugin.BLE;
 
-namespace KaraokeApp.Platforms.Android;
+namespace KaraokeApp;
 
 [Activity(
-    Theme = "@style/Maui.MainTheme.NoActionBar",
-    MainLauncher = false,
+    Theme = "@style/Maui.SplashTheme",
+    MainLauncher = true,
     ConfigurationChanges =
         ConfigChanges.ScreenSize |
         ConfigChanges.Orientation |
@@ -22,63 +22,71 @@ public class MainActivity : MauiAppCompatActivity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
-        RequestAllPermissions();
+        RequestRuntimePermissions();
     }
 
-    private void RequestAllPermissions()
+    private void RequestRuntimePermissions()
     {
-        var permissions = new List<string>
-        {
-            global::Android.Manifest.Permission.RecordAudio,
-            global::Android.Manifest.Permission.ModifyAudioSettings,
-            global::Android.Manifest.Permission.Internet,
-            global::Android.Manifest.Permission.AccessNetworkState,
-            global::Android.Manifest.Permission.AccessWifiState,
-        };
+        // Всі дозволи що потрібні — збираємо список залежно від API
+        var needed = new List<string>();
 
-        // Bluetooth permissions differ by API level
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.S)
+#pragma warning disable CA1416
+        // ── Мікрофон ─────────────────────────────────────────────────────
+        if (CheckSelfPermission(global::Android.Manifest.Permission.RecordAudio)
+            != Permission.Granted)
+            needed.Add(global::Android.Manifest.Permission.RecordAudio);
+
+        // ── Bluetooth ─────────────────────────────────────────────────────
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.S) // API 31+
         {
-            permissions.Add(global::Android.Manifest.Permission.BluetoothConnect);
-            permissions.Add(global::Android.Manifest.Permission.BluetoothScan);
+            if (CheckSelfPermission(global::Android.Manifest.Permission.BluetoothScan)
+                != Permission.Granted)
+                needed.Add(global::Android.Manifest.Permission.BluetoothScan);
+
+            if (CheckSelfPermission(global::Android.Manifest.Permission.BluetoothConnect)
+                != Permission.Granted)
+                needed.Add(global::Android.Manifest.Permission.BluetoothConnect);
         }
         else
         {
-            permissions.Add(global::Android.Manifest.Permission.Bluetooth);
-            permissions.Add(global::Android.Manifest.Permission.BluetoothAdmin);
+            if (CheckSelfPermission(global::Android.Manifest.Permission.Bluetooth)
+                != Permission.Granted)
+                needed.Add(global::Android.Manifest.Permission.Bluetooth);
+
+            if (CheckSelfPermission(global::Android.Manifest.Permission.BluetoothAdmin)
+                != Permission.Granted)
+                needed.Add(global::Android.Manifest.Permission.BluetoothAdmin);
         }
 
-        // Storage / media
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
+        // ── Мережа / Wi-Fi ────────────────────────────────────────────────
+        if (CheckSelfPermission(global::Android.Manifest.Permission.AccessWifiState)
+            != Permission.Granted)
+            needed.Add(global::Android.Manifest.Permission.AccessWifiState);
+
+        // ── Медіа / сховище ───────────────────────────────────────────────
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu) // API 33+
         {
-            permissions.Add(global::Android.Manifest.Permission.ReadMediaAudio);
+            if (CheckSelfPermission(global::Android.Manifest.Permission.ReadMediaAudio)
+                != Permission.Granted)
+                needed.Add(global::Android.Manifest.Permission.ReadMediaAudio);
         }
         else
         {
-            permissions.Add(global::Android.Manifest.Permission.ReadExternalStorage);
+            if (CheckSelfPermission(global::Android.Manifest.Permission.ReadExternalStorage)
+                != Permission.Granted)
+                needed.Add(global::Android.Manifest.Permission.ReadExternalStorage);
         }
 
-        var needed = permissions
-            .Where(p => CheckSelfPermission(p) != Permission.Granted)
-            .ToArray();
-
-        if (needed.Length > 0)
-            RequestPermissions(needed, PermissionRequestCode);
+        if (needed.Count > 0)
+            RequestPermissions(needed.ToArray(), PermissionRequestCode);
+#pragma warning restore CA1416
     }
 
     public override void OnRequestPermissionsResult(
-        int requestCode,
-        string[] permissions,
-        Permission[] grantResults)
+        int requestCode, string[] permissions, Permission[] grantResults)
     {
+#pragma warning disable CA1416
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
-        Plugin.BLE.Abstractions.Contracts.IAdapter? _ = null; // keep BLE alive
-    }
-
-    // Forward BLE scan results
-    protected override void OnActivityResult(int requestCode, Result resultCode,
-        global::Android.Content.Intent? data)
-    {
-        base.OnActivityResult(requestCode, resultCode, data);
+#pragma warning restore CA1416
     }
 }

@@ -2,76 +2,57 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="KaraokeApp.Views.ClientPage"
-             Title="Клієнт — Мікрофон"
-             BackgroundColor="#0D0D1A">
+             Title="Клієнт" BackgroundColor="#0D0D1A">
+    <VerticalStackLayout Padding="24,32" Spacing="16" VerticalOptions="Center">
 
-    <VerticalStackLayout Padding="24,32" Spacing="20" VerticalOptions="Center">
+        <VerticalStackLayout BackgroundColor="#1A1A2E" Padding="16" Spacing="6">
+            <Label x:Name="LblHostStatus" Text="🔴 Хост не знайдений"
+                   FontSize="15" TextColor="#CCCCDD" HorizontalOptions="Center"/>
+            <Label x:Name="LblStatus" Text="Натисніть Знайти для підключення"
+                   FontSize="13" TextColor="#666688"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+        </VerticalStackLayout>
 
-        <Frame BackgroundColor="#1A1A2E" CornerRadius="14" Padding="16" HasShadow="False">
-            <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
-                <Label x:Name="LblHostStatus" Text="🔴 Хост не знайдений"
-                       FontSize="15" TextColor="#CCCCDD" HorizontalOptions="Center"/>
-                <Label x:Name="LblStatus" Text="Натисніть 'Знайти' для підключення"
-                       FontSize="13" TextColor="#666688"
-                       HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
-            </VerticalStackLayout>
-        </Frame>
-
-        <!-- Big mic button -->
-        <Frame BackgroundColor="#1E1E3A" CornerRadius="100"
-               WidthRequest="180" HeightRequest="180"
-               HorizontalOptions="Center" HasShadow="False" Padding="0">
-            <Button x:Name="BtnMic" Text="🎤"
-                    BackgroundColor="Transparent"
-                    FontSize="64"
-                    WidthRequest="180" HeightRequest="180"
-                    Clicked="OnMicToggleClicked"/>
-        </Frame>
+        <Button x:Name="BtnMic" Text="🎤"
+                BackgroundColor="#1E1E3A" TextColor="White"
+                CornerRadius="90" WidthRequest="180" HeightRequest="180"
+                FontSize="64" HorizontalOptions="Center"
+                Clicked="OnMicToggleClicked"/>
 
         <Label x:Name="LblMicState" Text="МІК НЕАКТИВНИЙ"
                FontSize="16" FontAttributes="Bold"
                TextColor="#FF5252" HorizontalOptions="Center"/>
 
-        <ProgressBar x:Name="ProgMicLevel"
-                     ProgressColor="#A07AFF"
-                     BackgroundColor="#1A1A2E"
-                     HeightRequest="8" Margin="0,4"/>
+        <ProgressBar x:Name="ProgMicLevel" ProgressColor="#A07AFF"
+                     BackgroundColor="#1A1A2E" HeightRequest="8" Margin="0,4"/>
 
-        <!-- Volume -->
-        <Frame BackgroundColor="#1A1A2E" CornerRadius="14" Padding="16" HasShadow="False">
-            <VerticalStackLayout Spacing="8">
-                <Label Text="Гучність мікрофона" FontSize="14"
-                       TextColor="#CCCCDD" HorizontalOptions="Center"/>
-                <Slider x:Name="SliderMicVol" Minimum="0" Maximum="1" Value="1"
-                        ThumbColor="#A07AFF" MinimumTrackColor="#6C3CE1"
-                        MaximumTrackColor="#2D2D50"
-                        ValueChanged="OnMicVolumeChanged"/>
-            </VerticalStackLayout>
-        </Frame>
+        <VerticalStackLayout BackgroundColor="#1A1A2E" Padding="16" Spacing="8">
+            <Label Text="Гучність мікрофона" FontSize="14"
+                   TextColor="#CCCCDD" HorizontalOptions="Center"/>
+            <Slider x:Name="SliderMicVol" Minimum="0" Maximum="1" Value="1"
+                    ThumbColor="#A07AFF" MinimumTrackColor="#6C3CE1"
+                    MaximumTrackColor="#2D2D50" ValueChanged="OnMicVolumeChanged"/>
+        </VerticalStackLayout>
 
-        <!-- Connect panel -->
-        <Frame x:Name="FrameConnect" BackgroundColor="#1A1A2E"
-               CornerRadius="14" Padding="16" HasShadow="False">
-            <VerticalStackLayout Spacing="10">
-                <Label Text="Код сесії хоста (необов'язково):"
-                       FontSize="13" TextColor="#666688"/>
-                <Entry x:Name="EntryCode" Placeholder="Наприклад: AB12CD34"
-                       PlaceholderColor="#444466" TextColor="White"
-                       BackgroundColor="#252540" FontSize="16"/>
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                    <Button Grid.Column="0" Text="🔍 Знайти автоматично"
-                            BackgroundColor="#2D2D50" TextColor="#A07AFF"
-                            CornerRadius="10" FontSize="13"
-                            Clicked="OnFindClicked"/>
-                    <Button Grid.Column="1" Text="🔗 За кодом"
-                            BackgroundColor="#6C3CE1" TextColor="White"
-                            CornerRadius="10" FontSize="13"
-                            Clicked="OnConnectByCodeClicked"/>
-                </Grid>
-                <ActivityIndicator x:Name="Spinner" IsRunning="False"
-                                   Color="#A07AFF" IsVisible="False"/>
-            </VerticalStackLayout>
-        </Frame>
+        <VerticalStackLayout x:Name="FrameConnect" BackgroundColor="#1A1A2E"
+                             Padding="16" Spacing="10">
+            <Label Text="Код сесії хоста (необов'язково):"
+                   FontSize="13" TextColor="#666688"/>
+            <Entry x:Name="EntryCode" Placeholder="Наприклад: AB12CD34"
+                   PlaceholderColor="#444466" TextColor="White"
+                   BackgroundColor="#252540" FontSize="16"/>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="🔍 Знайти"
+                        BackgroundColor="#2D2D50" TextColor="#A07AFF"
+                        CornerRadius="10" FontSize="13" Clicked="OnFindClicked"/>
+                <Button Grid.Column="1" Text="🔗 За кодом"
+                        BackgroundColor="#6C3CE1" TextColor="White"
+                        CornerRadius="10" FontSize="13"
+                        Clicked="OnConnectByCodeClicked"/>
+            </Grid>
+            <ActivityIndicator x:Name="Spinner" IsRunning="False"
+                               Color="#A07AFF" IsVisible="False"/>
+        </VerticalStackLayout>
 
         <Button x:Name="BtnDisconnect" Text="⏹ Відключитись"
                 BackgroundColor="#FF3B30" TextColor="White"

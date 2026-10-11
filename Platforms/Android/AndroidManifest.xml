@@ -3,14 +3,10 @@
           package="com.karaokeapp.jbl">
 
     <!-- Bluetooth permissions (API 31+) -->
-    <uses-permission android:name="android.permission.BLUETOOTH"
-                     android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
-                     android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-                     android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+	<uses-permission android:name="android.permission.BLUETOOTH" />
+	<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+	<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+	<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <!-- Audio -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -47,7 +43,7 @@
             android:name="com.karaokeapp.jbl.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Maui.MainTheme.NoActionBar"
+            android:theme="@style/Maui.SplashTheme"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:screenOrientation="portrait">
             <intent-filter>

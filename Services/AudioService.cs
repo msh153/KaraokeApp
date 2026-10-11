@@ -18,6 +18,7 @@ public interface IAudioService
     event EventHandler<float> Mic1LevelChanged;
     event EventHandler<float> Mic2LevelChanged;
 
+    Task StartSoloModeAsync();
     Task StartHostModeAsync(SessionInfo session);
     Task StartClientModeAsync(SessionInfo session);
     Task StopAsync();
@@ -48,27 +49,49 @@ public class AudioService : IAudioService
 
     public AudioService(IAudioCapture audioCapture, IAudioPlayer audioPlayer)
     {
-        _audioCapture = audioCapture;
-        _audioPlayer = audioPlayer;
+        try
+        {
+            _audioCapture = audioCapture;
+            _audioPlayer = audioPlayer;
+            System.Diagnostics.Debug.WriteLine("[AudioService] Инициализирован успешно");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Ошибка инициализации: {ex}");
+            throw;
+        }
     }
 
-    public async Task StartHostModeAsync(SessionInfo session)
+    public Task StartSoloModeAsync()
+    {
+        _isHost = true;
+        _session = null;
+        _cts = new CancellationTokenSource();
+
+        // ← НЕ await, запускаємо у фоні
+        _ = _audioCapture.StartCaptureAsync(Settings, OnMic1DataCaptured, _cts.Token);
+
+        IsCapturing = true;
+        IsStreaming = false;
+        return Task.CompletedTask;
+    }
+
+    public Task StartHostModeAsync(SessionInfo session)
     {
         _isHost = true;
         _session = session;
         _cts = new CancellationTokenSource();
 
-        // Start local mic capture
-        await _audioCapture.StartCaptureAsync(Settings, OnMic1DataCaptured, _cts.Token);
-
-        // Listen for client mic2 data
-        _ = Task.Run(() => ListenForClientAudioAsync(_cts.Token), _cts.Token);
+        // ← теж у фоні
+        _ = _audioCapture.StartCaptureAsync(Settings, OnMic1DataCaptured, _cts.Token);
+        _ = ListenForClientAudioAsync(_cts.Token);
 
         IsCapturing = true;
         IsStreaming = false;
+        return Task.CompletedTask;
     }
 
-    public async Task StartClientModeAsync(SessionInfo session)
+    public Task StartClientModeAsync(SessionInfo session)
     {
         _isHost = false;
         _session = session;
@@ -77,11 +100,11 @@ public class AudioService : IAudioService
         _udpSend = new UdpClient();
         _udpSend.Connect(session.HostIp, session.AudioPort);
 
-        // Start mic capture and stream to host
-        await _audioCapture.StartCaptureAsync(Settings, OnMic2DataCaptured, _cts.Token);
+        _ = _audioCapture.StartCaptureAsync(Settings, OnMic2DataCaptured, _cts.Token);
 
         IsCapturing = true;
         IsStreaming = true;
+        return Task.CompletedTask;
     }
 
     private void OnMic1DataCaptured(byte[] pcmData)
@@ -89,9 +112,11 @@ public class AudioService : IAudioService
         var level = CalculateLevel(pcmData);
         Mic1LevelChanged?.Invoke(this, level);
 
-        // Host plays directly to output (mixed)
         if (_isHost)
-            _audioPlayer.WriteMixBuffer(pcmData, AudioChannel.Mic1, Settings.Mic1Volume);
+        {
+            var vol = Settings.Mic1Muted ? 0f : Settings.Mic1Volume;
+            _audioPlayer.WriteMixBuffer(pcmData, AudioChannel.Mic1, vol);
+        }
     }
 
     private void OnMic2DataCaptured(byte[] pcmData)
@@ -176,18 +201,26 @@ public class AudioService : IAudioService
 
     public async Task<string?> PickMusicFileAsync()
     {
-        var options = new PickOptions
+        var result = await FilePicker.Default.PickAsync(new PickOptions
         {
             PickerTitle = "Оберіть музичний файл",
-            FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-            {
+            FileTypes = new FilePickerFileType(
+                new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
                 { DevicePlatform.Android, new[] { "audio/*" } },
-                { DevicePlatform.iOS, new[] { "public.audio" } }
-            })
-        };
+                })
+        });
 
-        var result = await FilePicker.Default.PickAsync(options);
-        return result?.FullPath;
+        if (result == null) return null;
+
+        var cacheDir = FileSystem.CacheDirectory;
+        var destPath = Path.Combine(cacheDir, result.FileName);
+
+        await using var source = await result.OpenReadAsync();
+        await using var dest = File.Create(destPath);
+        await source.CopyToAsync(dest);
+
+        return destPath;
     }
 
     public void PlayMusic(string filePath)

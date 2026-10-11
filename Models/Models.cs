@@ -3,8 +3,8 @@ namespace KaraokeApp.Models;
 public enum DeviceRole
 {
     Unset,
-    Host,   // Plays music + mic + receives mic from Client
-    Client  // Only mic, streams to Host
+    Host,
+    Client
 }
 
 public enum ConnectionState
@@ -25,17 +25,7 @@ public class BluetoothDevice
     public bool IsJBL => Name.Contains("JBL", StringComparison.OrdinalIgnoreCase);
 }
 
-public class AudioSettings
-{
-    public float MusicVolume { get; set; } = 0.8f;
-    public float Mic1Volume { get; set; } = 1.0f;
-    public float Mic2Volume { get; set; } = 1.0f;
-    public bool Mic1Muted { get; set; }
-    public bool Mic2Muted { get; set; }
-    public bool MusicMuted { get; set; }
-    public int SampleRate { get; set; } = 44100;
-    public int BufferSize { get; set; } = 4096;
-}
+// AudioSettings lives in KaraokeApp.Services (IAudioPlatform.cs) — not duplicated here
 
 public class StreamPacket
 {

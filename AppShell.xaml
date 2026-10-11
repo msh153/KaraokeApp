@@ -1,15 +1,30 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<Shell
-    x:Class="KaraokeApp.AppShell"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:KaraokeApp"
-    Shell.FlyoutBehavior="Disabled"
-    Title="KaraokeApp">
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:KaraokeApp.Views"
+       x:Class="KaraokeApp.AppShell"
+       BackgroundColor="#0D0D1A"
+       ForegroundColor="#A07AFF"
+       TitleColor="White"
+       TabBarBackgroundColor="#0D0D1A"
+       TabBarForegroundColor="#A07AFF"
+       TabBarUnselectedColor="#555577">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
-
+    <TabBar>
+        <Tab Title="Головна" Route="main">
+            <ShellContent
+                ContentTemplate="{DataTemplate views:MainPage}"
+                Route="main" />
+        </Tab>
+        <Tab Title="🎵 Хост" Route="host">
+            <ShellContent
+                ContentTemplate="{DataTemplate views:HostPage}"
+                Route="host" />
+        </Tab>
+        <Tab Title="🎤 Клієнт" Route="client">
+            <ShellContent
+                ContentTemplate="{DataTemplate views:ClientPage}"
+                Route="client" />
+        </Tab>
+    </TabBar>
 </Shell>

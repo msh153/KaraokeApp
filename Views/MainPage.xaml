@@ -4,49 +4,35 @@
              x:Class="KaraokeApp.Views.MainPage"
              BackgroundColor="#0D0D1A"
              Shell.NavBarIsVisible="False">
-
-    <VerticalStackLayout Padding="32,60,32,40"
-                         Spacing="0"
-                         VerticalOptions="Center">
-
-        <Frame BackgroundColor="#1E1E3A" CornerRadius="30"
-               Padding="24" HorizontalOptions="Center"
-               HasShadow="False" Margin="0,0,0,28">
-            <Label Text="🎤" FontSize="64" HorizontalOptions="Center" />
-        </Frame>
-
-        <Label Text="JBL Karaoke"
-               FontSize="36" FontAttributes="Bold"
-               TextColor="White" HorizontalOptions="Center" />
-
+    <VerticalStackLayout Padding="32,60,32,40" Spacing="0" VerticalOptions="Center">
+        <Grid HorizontalOptions="Center" Margin="0,0,0,28"
+              WidthRequest="120" HeightRequest="120">
+            <BoxView BackgroundColor="#1E1E3A" CornerRadius="30"
+                     WidthRequest="120" HeightRequest="120"/>
+            <Label Text="🎤" FontSize="64" HorizontalOptions="Center"
+                   VerticalOptions="Center"/>
+        </Grid>
+        <Label Text="JBL Karaoke" FontSize="36" FontAttributes="Bold"
+               TextColor="White" HorizontalOptions="Center"/>
         <Label Text="Два телефони · Один динамік"
                FontSize="15" TextColor="#8888AA"
-               HorizontalOptions="Center"
-               Margin="0,6,0,50" />
+               HorizontalOptions="Center" Margin="0,6,0,50"/>
 
         <Button x:Name="BtnHost"
                 Text="🎵  Я ХОСТ  (музика + мікрофон)"
                 FontSize="16" FontAttributes="Bold"
-                TextColor="White"
-                BackgroundColor="#6C3CE1"
-                CornerRadius="20"
-                Padding="20,18"
-                Margin="0,0,0,16"
-                Clicked="OnHostClicked" />
-
+                TextColor="White" BackgroundColor="#6C3CE1"
+                CornerRadius="20" Padding="20,18" Margin="0,0,0,16"
+                Clicked="OnHostClicked"/>
         <Button x:Name="BtnClient"
                 Text="🎤  Я КЛІЄНТ  (тільки мікрофон)"
                 FontSize="16" FontAttributes="Bold"
-                TextColor="#A07AFF"
-                BackgroundColor="#1E1E3A"
-                CornerRadius="20"
-                Padding="20,18"
-                Clicked="OnClientClicked" />
-
+                TextColor="#A07AFF" BackgroundColor="#1E1E3A"
+                CornerRadius="20" Padding="20,18"
+                Clicked="OnClientClicked"/>
         <Label Text="Хост підключає JBL Go 3 і запускає музику.&#x0a;Клієнт підключається по Wi-Fi і співає через мікрофон."
                FontSize="13" TextColor="#555577"
-               HorizontalOptions="Center"
-               HorizontalTextAlignment="Center"
-               Margin="0,36,0,0" />
+               HorizontalOptions="Center" HorizontalTextAlignment="Center"
+               Margin="0,36,0,0"/>
     </VerticalStackLayout>
 </ContentPage>

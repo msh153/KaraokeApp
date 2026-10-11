@@ -55,6 +55,17 @@ public class PermissionService
         var status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
         if (status == PermissionStatus.Granted) return true;
         status = await Permissions.RequestAsync<Permissions.Bluetooth>();
+
+#if ANDROID
+    // Fallback для Android < 12
+    if (status != PermissionStatus.Granted && 
+        !OperatingSystem.IsAndroidVersionAtLeast(31))
+    {
+        var loc = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+        return loc == PermissionStatus.Granted;
+    }
+#endif
+
         return status == PermissionStatus.Granted;
     }
 }
